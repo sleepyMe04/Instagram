@@ -53,6 +53,27 @@ export default function PostCard({ post }) {
           alt="post"
           onDoubleClick={() => doLike(true)}
         />
+        {/* Repost overlay — shown only on reposted posts */}
+        {post.repostCaption !== undefined && (
+          <div className="ig-repost-overlay">
+            <div className="ig-repost-overlay-avatar-wrap">
+              <img
+                src="https://i.pravatar.cc/40?img=1"
+                alt="you"
+                className="ig-repost-overlay-avatar"
+              />
+              <div className="ig-repost-overlay-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"
+                  strokeLinecap="round" strokeLinejoin="round" width="11" height="11">
+                  <polyline points="17 1 21 5 17 9" />
+                  <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                  <polyline points="7 23 3 19 7 15" />
+                  <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Action buttons ── */}
