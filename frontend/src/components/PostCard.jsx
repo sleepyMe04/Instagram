@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import CommentItem from './CommentItem';
+
+const bannedWords = ['hate', 'kill', 'slur1', 'slur2'];
 
 // ── Icons ──────────────────────────────────────────────────────────────────
 
@@ -12,12 +15,33 @@ const HeartIcon = ({ filled }) => filled ? (
   </svg>
 );
 
+const CommentBubbleIcon = () => (
+  <svg fill="none" height="24" viewBox="0 0 24 24" width="24" stroke="#262626" strokeWidth="2" strokeLinejoin="round">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </svg>
+);
+
+
+
+const BookmarkIcon = ({ saved }) => (
+  <svg fill={saved ? '#262626' : 'none'} height="24" viewBox="0 0 24 24" width="24"
+    stroke="#262626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+  </svg>
+);
+
 // ── PostCard ───────────────────────────────────────────────────────────────
 
 export default function PostCard({ post }) {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likes);
   const [heartAnim, setHeartAnim] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [comments, setComments] = useState(post.comments || []);
+  const [commentText, setCommentText] = useState('');
+  const [warning, setWarning] = useState('');
+  const [showAll, setShowAll] = useState(false);
+
 
   const doLike = (forceOn) => {
     const nowLiked = forceOn !== undefined ? forceOn : !liked;
@@ -29,6 +53,25 @@ export default function PostCard({ post }) {
       setTimeout(() => setHeartAnim(false), 300);
     }
   };
+
+  const submitComment = () => {
+    if (!commentText.trim()) return;
+    if (bannedWords.some(w => commentText.toLowerCase().includes(w))) {
+      setWarning(' Your comment contains inappropriate language.');
+      return;
+    }
+    setWarning('');
+    setComments(prev => [...prev, {
+      _id: Date.now().toString(),
+      author: 'you',
+      text: commentText,
+      time: 'now',
+    }]);
+    setCommentText('');
+    setShowAll(true);
+  };
+
+  const visible = showAll ? comments : comments.slice(0, 2);
 
   return (
     <article className="ig-post">
@@ -64,6 +107,14 @@ export default function PostCard({ post }) {
           <HeartIcon filled={liked} />
         </button>
         
+      {/* Comment — focuses the comment input */}
+        <button
+          className="ig-action-btn"
+          onClick={() => document.getElementById(`ci-${post._id}`)?.focus()}
+        >
+          <CommentBubbleIcon />
+        </button>
+
         {/* Repost — opens the RepostModal via onRepost prop */}
         <button
           className="ig-action-btn"
@@ -79,7 +130,6 @@ export default function PostCard({ post }) {
         </button>
       </div>
       
-
       {/* ── Likes count ── */}
       <div className="ig-post-likes">{likeCount.toLocaleString()} likes</div>
 
@@ -89,9 +139,41 @@ export default function PostCard({ post }) {
         {post.caption}
       </div>
 
-      <div className="ig-post-time">2 hours ago</div>
+      {/* ── Comments ── */}
+      {comments.length > 2 && !showAll && (
+        <button className="ig-view-all-comments" onClick={() => setShowAll(true)}>
+          View all {comments.length} comments
+        </button>
+      )}
+      {comments.length > 0 && (
+        <div className="ig-comments">
+          {visible.map(c => <CommentItem key={c._id} comment={c} />)}
+        </div>
+      )}
 
-      
+      {/* ── Moderation warning ── */}
+      {warning && <div className="ig-moderation-warning">{warning}</div>}
+
+      <div className="ig-post-time">2 hours ago</div>
+      {/* ── Add comment bar ── */}
+      <div className="ig-add-comment-bar">
+        <span className="ig-emoji-btn">😊</span>
+        <input
+          id={`ci-${post._id}`}
+          className="ig-comment-input"
+          value={commentText}
+          onChange={e => { setCommentText(e.target.value); setWarning(''); }}
+          onKeyDown={e => e.key === 'Enter' && submitComment()}
+          placeholder="Add a comment…"
+        />
+        <button
+          className={`ig-comment-post-btn${commentText.trim() ? ' visible' : ''}`}
+          onClick={submitComment}
+          disabled={!commentText.trim()}
+        >
+          Post
+        </button>
+      </div>
 
     </article>
   );
