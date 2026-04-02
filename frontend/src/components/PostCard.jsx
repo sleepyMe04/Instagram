@@ -21,6 +21,17 @@ const CommentBubbleIcon = () => (
   </svg>
 );
 
+// Repost icon — green when already reposted, grey otherwise
+const RepostIcon = ({ active }) => (
+  <svg fill="none" height="22" viewBox="0 0 24 24" width="22"
+    stroke={active ? '#00b300' : '#262626'} strokeWidth="2"
+    strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="17 1 21 5 17 9" />
+    <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+    <polyline points="7 23 3 19 7 15" />
+    <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+  </svg>
+);
 
 
 const BookmarkIcon = ({ saved }) => (
@@ -31,8 +42,8 @@ const BookmarkIcon = ({ saved }) => (
 );
 
 // ── PostCard ───────────────────────────────────────────────────────────────
+export default function PostCard({ post, onRepost }) {
 
-export default function PostCard({ post }) {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likes);
   const [heartAnim, setHeartAnim] = useState(false);
@@ -41,6 +52,7 @@ export default function PostCard({ post }) {
   const [commentText, setCommentText] = useState('');
   const [warning, setWarning] = useState('');
   const [showAll, setShowAll] = useState(false);
+  
 
 
   const doLike = (forceOn) => {

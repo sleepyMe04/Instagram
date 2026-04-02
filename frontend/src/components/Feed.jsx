@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import PostCard from './PostCard';
- 
+import RepostModal from './RepostModal';
+
+
+
 const POSTS = [
   {
     _id: 'post-1',
@@ -25,17 +28,58 @@ const POSTS = [
   },
 ];
  
+
+
 export default function Feed() {
-  const [posts] = useState(POSTS);
- 
+  const [posts, setPosts] = useState(POSTS);
+  const [repostTarget, setRepostTarget] = useState(null); // post being reposted
+  const [toast, setToast] = useState(false);
+
+  // Called when user clicks repost icon on any PostCard
+  const handleOpenRepost = (post) => {
+    setRepostTarget(post);
+  };
+
+  // Called when user confirms repost inside the modal
+  const handleConfirmRepost = (caption) => {
+    const repostedPost = {
+      ...repostTarget,
+      _id: `repost-${repostTarget._id}-${Date.now()}`,
+      repostCaption: caption, // undefined means not a repost; empty string is a repost with no caption
+    };
+    setPosts(prev => [repostedPost, ...prev]);
+    setRepostTarget(null);
+    setToast(true);
+    setTimeout(() => setToast(false), 2500);
+  };
+
+  const handleCancelRepost = () => {
+    setRepostTarget(null);
+  };
+
   return (
     <div className="ig-feed">
       {posts.map(post => (
         <PostCard
           key={post._id}
           post={post}
+          onRepost={handleOpenRepost}
         />
       ))}
+
+      {/* Repost bottom-sheet modal */}
+      {repostTarget && (
+        <RepostModal
+          post={repostTarget}
+          onCancel={handleCancelRepost}
+          onConfirm={handleConfirmRepost}
+        />
+      )}
+
+      {/* Toast confirmation */}
+      {toast && (
+        <div className="ig-repost-toast">✓ Reposted to your feed</div>
+      )}
     </div>
   );
 }
