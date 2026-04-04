@@ -114,7 +114,7 @@ export default function PostCard({ post, onRepost, onLike }) {
           </div>
           <div className="ig-post-header-meta">
             <span className="ig-post-username">{post.author}</span>
-            <span className="ig-post-subt">New York, USA</span>
+            <span className="ig-post-subt">{timeAgo(post.createdAt)}</span>
           </div>
           <button className="ig-post-more">•••</button>
         </div>
