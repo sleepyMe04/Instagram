@@ -1,76 +1,86 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PostCard from './PostCard';
 import RepostModal from './RepostModal';
-
-
-
-const POSTS = [
-  {
-    _id: 'post-1',
-    author: 'natgeo',
-    imageUrl: 'https://picsum.photos/seed/mountain123/600/600',
-    caption: 'The mountains are calling and I must go 🏔️ #nature #adventure #explore',
-    likes: 48291,
-        comments: [
-      { _id: 'c1', author: 'wanderlust', text: 'Absolutely breathtaking! 😍', time: '2h' },
-      { _id: 'c2', author: 'hikerpro', text: 'Which mountain range is this?', time: '1h' },
-    ],
-
-  },
-  {
-    _id: 'post-2',
-    author: 'foodie.world',
-    imageUrl: 'https://picsum.photos/seed/brunch456/600/600',
-    caption: 'Sunday brunch hits different 🍳☕ #foodie #brunch #weekend',
-    likes: 7843,
-        comments: [
-      { _id: 'c3', author: 'cheflena', text: 'That looks SO good omg 🤤', time: '45m' },
-    ],
-
-  },
-  {
-    _id: 'post-3',
-    author: 'cityscapes',
-    imageUrl: 'https://picsum.photos/seed/city789/600/600',
-    caption: 'Golden hour in the city ✨ #urban #photography #goldenhour',
-    likes: 12950,
-        comments: [
-      { _id: 'c4', author: 'urbanclick', text: 'The lighting is perfect!', time: '3h' },
-      { _id: 'c5', author: 'photogeek', text: 'What camera did you use?', time: '2h' },
-      { _id: 'c6', author: 'citylover', text: 'Beautiful shot 📸', time: '1h' },
-    ],
-
-  },
-];
- 
-
+import api from '../api/axios';
 
 export default function Feed() {
-  const [posts, setPosts] = useState(POSTS);
-  const [repostTarget, setRepostTarget] = useState(null); // post being reposted
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [repostTarget, setRepostTarget] = useState(null);
   const [toast, setToast] = useState(false);
 
-  // Called when user clicks repost icon on any PostCard
-  const handleOpenRepost = (post) => {
-    setRepostTarget(post);
+  useEffect(() => {
+    api.get('/posts/feed')
+      .then(res => {
+        setPosts(res.data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to fetch posts:', err);
+        setError('Could not load posts. Is the backend running?');
+        setLoading(false);
+      });
+  }, []);
+
+  const handleLike = async (postId, liked) => {
+    try {
+      const res = await api.put(`/posts/${postId}/like`, { liked });
+      setPosts(prev => prev.map(p => p._id === postId ? { ...p, likes: res.data.likes } : p));
+    } catch (err) {
+      console.error('Like failed:', err);
+    }
   };
 
-  // Called when user confirms repost inside the modal
-  const handleConfirmRepost = (caption) => {
-    const repostedPost = {
-      ...repostTarget,
-      _id: `repost-${repostTarget._id}-${Date.now()}`,
-      repostCaption: caption, // undefined means not a repost; empty string is a repost with no caption
-    };
-    setPosts(prev => [repostedPost, ...prev]);
+  const handleOpenRepost = (post) => setRepostTarget(post);
+
+  const handleConfirmRepost = async (caption) => {
+    try {
+      await api.put(`/posts/${repostTarget._id}/repost`, { reposted: true });
+    } catch (err) {
+      console.error('Repost failed:', err);
+    }
+    // Replace the original post in-place with the reposted version (adds repost badge)
+    // so no duplicate appears in the feed.
+    setPosts(prev => prev.map(p =>
+      p._id === repostTarget._id
+        ? { ...p, repostCaption: caption }
+        : p
+    ));
     setRepostTarget(null);
     setToast(true);
     setTimeout(() => setToast(false), 2500);
   };
 
-  const handleCancelRepost = () => {
-    setRepostTarget(null);
-  };
+  const handleCancelRepost = () => setRepostTarget(null);
+
+  if (loading) return (
+    <div className="ig-feed-loading">
+      {[1, 2, 3].map(i => (
+        <div key={i} className="ig-post ig-skeleton">
+          <div className="ig-skeleton-header">
+            <div className="ig-skeleton-avatar" />
+            <div className="ig-skeleton-lines">
+              <div className="ig-skeleton-line short" />
+              <div className="ig-skeleton-line xshort" />
+            </div>
+          </div>
+          <div className="ig-skeleton-image" />
+          <div className="ig-skeleton-footer">
+            <div className="ig-skeleton-line medium" />
+            <div className="ig-skeleton-line long" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  if (error) return (
+    <div className="ig-feed-error">
+      <span>⚠️</span>
+      <p>{error}</p>
+    </div>
+  );
 
   return (
     <div className="ig-feed">
@@ -79,10 +89,10 @@ export default function Feed() {
           key={post._id}
           post={post}
           onRepost={handleOpenRepost}
+          onLike={handleLike}
         />
       ))}
 
-      {/* Repost bottom-sheet modal */}
       {repostTarget && (
         <RepostModal
           post={repostTarget}
@@ -91,7 +101,6 @@ export default function Feed() {
         />
       )}
 
-      {/* Toast confirmation */}
       {toast && (
         <div className="ig-repost-toast">✓ Reposted to your feed</div>
       )}
