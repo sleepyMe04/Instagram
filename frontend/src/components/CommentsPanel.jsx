@@ -1,3 +1,97 @@
+import { useState, useEffect, useRef } from 'react';
+import api from '../api/axios';
+
+const bannedWords = ['hate', 'kill', 'slur1', 'slur2'];
+const MY_AVATAR = 'https://i.pravatar.cc/32?img=1';
+
+// ── Single reply row ──────────────────────────────────────────────────────────
+function ReplyRow({ reply }) {
+  const avatar = reply.author === 'you'
+    ? MY_AVATAR
+    : `https://i.pravatar.cc/28?u=${reply.author}`;
+  return (
+    <div className="cp-reply-row">
+      <img src={avatar} alt={reply.author} className="cp-av cp-av-sm" />
+      <div className="cp-reply-body">
+        <span className="cp-uname">{reply.author}</span>{' '}{reply.text}
+      </div>
+    </div>
+  );
+}
+
+// ── Single top-level comment + its threaded replies ───────────────────────────
+function CommentThread({ comment, postId, replies, onAddReply, onReplyTo }) {
+  const [showReplies, setShowReplies] = useState(false);
+  const [loading, setLoading]         = useState(false);
+  const [fetched, setFetched]         = useState(false);
+
+  const avatar = comment.author === 'you'
+    ? MY_AVATAR
+    : `https://i.pravatar.cc/36?u=${comment.author}`;
+
+  const handleToggleReplies = async () => {
+    if (fetched) { setShowReplies(s => !s); return; }
+    setLoading(true);
+    try {
+      const res = await api.get(`/comments/${postId}/replies/${comment._id}`);
+      // merge server replies with any locally-added ones already in `replies`
+      const serverIds = new Set(res.data.map(r => r._id));
+      const merged = [
+        ...res.data,
+        ...replies.filter(r => !serverIds.has(r._id)),
+      ];
+      onAddReply(comment._id, merged, true); // true = replace
+    } catch {
+      /* ignore – local replies still visible */
+    }
+    setFetched(true);
+    setShowReplies(true);
+    setLoading(false);
+  };
+
+  const totalReplies = replies.length;
+
+  return (
+    <div className="cp-thread">
+      {/* Main comment row */}
+      <div className="cp-comment-row">
+        <img src={avatar} alt={comment.author} className="cp-av" />
+        <div className="cp-comment-body">
+          <p className="cp-comment-text">
+            <span className="cp-uname">{comment.author}</span>{' '}{comment.text}
+          </p>
+          <div className="cp-comment-meta">
+            {comment.time && <span className="cp-time">{comment.time}</span>}
+            <button className="cp-reply-trigger" onClick={() => onReplyTo(comment)}>
+              Reply
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* View / hide replies toggle */}
+      {totalReplies > 0 && (
+        <button className="cp-toggle-replies" onClick={handleToggleReplies}>
+          <span className="cp-dash" />
+          {loading
+            ? 'Loading…'
+            : showReplies
+              ? 'Hide replies'
+              : `View ${totalReplies} repl${totalReplies === 1 ? 'y' : 'ies'}`}
+        </button>
+      )}
+
+      {/* Threaded reply list */}
+      {showReplies && replies.length > 0 && (
+        <div className="cp-replies-indent">
+          {replies.map(r => <ReplyRow key={r._id} reply={r} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── CommentsPanel ─────────────────────────────────────────────────────────────
 export default function CommentsPanel({
   post,
   comments,        // lifted state from PostCard
