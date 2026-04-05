@@ -3,9 +3,6 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
 
-const Post = require('./models/Post');
-const { seedDatabase } = require('./seed');
-
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -21,23 +18,7 @@ mongoose.connect(process.env.MONGO_URI, {
   serverSelectionTimeoutMS: 10000,
   socketTimeoutMS: 45000,
 })
-  .then(async () => {
-    console.log('MongoDB Connected Successfully!');
-    
-    // Check if database is empty
-    const postCount = await Post.countDocuments();
-    if (postCount === 0) {
-      console.log('📀 Database is empty. Seeding...');
-      try {
-        await seedDatabase();
-        console.log('✅ Database seeded successfully!');
-      } catch (err) {
-        console.error('❌ Error seeding database:', err.message);
-      }
-    } else {
-      console.log(`📦 Database already has ${postCount} posts`);
-    }
-  })
+  .then(() => console.log('MongoDB Connected Successfully!'))
   .catch(err => {
     console.error('MongoDB Connection Error:', err.message);
     process.exit(1);
