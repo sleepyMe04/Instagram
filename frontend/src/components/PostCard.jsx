@@ -1,9 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
 import CommentsPanel from './CommentsPanel';
+import LikesModal from './LikesModal';
 import RepostModal from './RepostModal';
 import api from '../api/axios';
-
-const MY_AVATAR = 'https://i.pravatar.cc/32?img=1';
 
 const HeartIcon = ({ filled }) => filled ? (
   <svg fill="#ed4956" height="24" viewBox="0 0 48 48" width="24">
@@ -49,13 +48,16 @@ const timeAgo = (dateStr) => {
   return `${Math.floor(hrs / 24)}d ago`;
 };
 
-export default function PostCard({ post, onRepost, onLike }) {
+export default function PostCard({ post, currentUser, onRepost, onLike }) {
+  // Viewer avatar
   const images = post.images?.length ? post.images : [post.imageUrl];
+  const myAvatar = currentUser?.avatarUrl || 'https://i.pravatar.cc/32?u=you.demo';
   const [activeImage, setActiveImage] = useState(0);
-  const [liked,       setLiked]      = useState(false);
+  const [liked,       setLiked]      = useState(Boolean(post.viewerHasLiked));
   const [likeCount,   setLikeCount]  = useState(post.likes || 0);
   const [saved,       setSaved]      = useState(false);
   const [heartAnim,   setHeartAnim]  = useState(false);
+  const [showLikes,   setShowLikes]  = useState(false);
   const [showPanel,   setShowPanel]  = useState(false);
 
   // ── Repost state ──────────────────────────────────────────────────────
@@ -73,6 +75,16 @@ export default function PostCard({ post, onRepost, onLike }) {
   useEffect(() => {
     setActiveImage(0);
   }, [post._id]);
+
+  useEffect(() => {
+    setLikeCount(post.likes || 0);
+  }, [post._id, post.likes]);
+
+  useEffect(() => {
+    // Server state
+    setLiked(Boolean(post.viewerHasLiked));
+    setRepostCaption(post.repostCaption !== undefined ? post.repostCaption : undefined);
+  }, [post._id, post.viewerHasLiked, post.repostCaption]);
 
   const handleAddComment = useCallback((comment, fromServer = false) => {
     setComments(prev => {
@@ -107,6 +119,7 @@ export default function PostCard({ post, onRepost, onLike }) {
   const doLike = async (forceOn) => {
     const nowLiked = forceOn !== undefined ? forceOn : !liked;
     if (forceOn === true && liked) return;
+    // Optimistic like
     setLiked(nowLiked);
     setLikeCount(c => nowLiked ? c + 1 : Math.max(0, c - 1));
     if (nowLiked) { setHeartAnim(true); setTimeout(() => setHeartAnim(false), 300); }
@@ -120,10 +133,14 @@ export default function PostCard({ post, onRepost, onLike }) {
       setShowCaptionModal(true);
       return;
     }
-    // First time — immediately mark as reposted (no modal yet)
+    // Start repost
     setRepostCaption('');
     try {
-      await api.put(`/posts/${post._id}/repost`, { reposted: true });
+      await api.put(`/posts/${post._id}/repost`, {
+        reposted: true,
+        userId: currentUser?._id,
+        caption: ''
+      });
     } catch (err) {
       console.error('Repost failed:', err);
     }
@@ -135,13 +152,28 @@ export default function PostCard({ post, onRepost, onLike }) {
   };
 
   const handleCaptionConfirm = (caption) => {
+    // Save caption
     setRepostCaption(caption);
     setShowCaptionModal(false);
+    api.put(`/posts/${post._id}/repost`, {
+      reposted: true,
+      userId: currentUser?._id,
+      caption
+    }).catch(err => {
+      console.error('Repost caption save failed:', err);
+    });
   };
 
   const handleDelete = () => {
+    // Remove repost
     setRepostCaption(undefined);
     setShowCaptionModal(false);
+    api.put(`/posts/${post._id}/repost`, {
+      reposted: false,
+      userId: currentUser?._id
+    }).catch(err => {
+      console.error('Remove repost failed:', err);
+    });
   };
 
   const showCarouselControls = images.length > 1;
@@ -218,7 +250,7 @@ export default function PostCard({ post, onRepost, onLike }) {
               {/* Avatar + repost badge pill */}
               <div className="ig-repost-overlay-avatar-pill">
                 <div className="ig-repost-overlay-avatar-wrap">
-                  <img src={MY_AVATAR} alt="you" className="ig-repost-overlay-avatar"/>
+                  <img src={myAvatar} alt="you" className="ig-repost-overlay-avatar"/>
                   <div className="ig-repost-overlay-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"
                       strokeLinecap="round" strokeLinejoin="round" width="11" height="11">
@@ -250,7 +282,13 @@ export default function PostCard({ post, onRepost, onLike }) {
           </button>
         </div>
 
-        <div className="ig-post-likes">{likeCount.toLocaleString()} likes</div>
+        <button
+          type="button"
+          className="ig-post-likes ig-post-likes-btn"
+          onClick={() => setShowLikes(true)}
+        >
+          {likeCount.toLocaleString()} likes
+        </button>
 
         <div className="ig-post-caption">
           <span className="ig-caption-user">{post.author}</span>{post.caption}
@@ -267,7 +305,7 @@ export default function PostCard({ post, onRepost, onLike }) {
         {/* Inline comment bar — opens CommentsPanel */}
         <div className="ig-add-comment-bar" onClick={() => setShowPanel(true)} style={{ cursor: 'pointer' }}>
           <div className="ig-comment-bar-avatar">
-            <img src={MY_AVATAR} alt="you"/>
+            <img src={myAvatar} alt="you"/>
           </div>
           <div className="ig-comment-input ig-comment-input-placeholder">
             Add a comment…
@@ -279,11 +317,20 @@ export default function PostCard({ post, onRepost, onLike }) {
       {showPanel && (
         <CommentsPanel
           post={post}
+          currentUser={currentUser}
           comments={comments}
           repliesMap={repliesMap}
           onAddComment={handleAddComment}
           onAddReply={handleAddReply}
           onClose={() => setShowPanel(false)}
+        />
+      )}
+
+      {showLikes && (
+        <LikesModal
+          postId={post._id}
+          initialCount={likeCount}
+          onClose={() => setShowLikes(false)}
         />
       )}
 

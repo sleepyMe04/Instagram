@@ -3,7 +3,8 @@ import PostCard from './PostCard';
 import RepostModal from './RepostModal';
 import api from '../api/axios';
 
-export default function Feed() {
+export default function Feed({ currentUser: initialCurrentUser = null }) {
+  const [currentUser, setCurrentUser] = useState(initialCurrentUser);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -11,22 +12,40 @@ export default function Feed() {
   const [toast, setToast] = useState(false);
 
   useEffect(() => {
-    api.get('/posts/feed')
-      .then(res => {
-        setPosts(res.data);
-        setLoading(false);
-      })
-      .catch(err => {
+    async function loadFeed() {
+      try {
+        // Resolve viewer
+        const resolvedUser = initialCurrentUser || (await api.get('/users/me')).data;
+        setCurrentUser(resolvedUser);
+
+        // Load feed
+        const postsResponse = await api.get('/posts/feed', {
+          params: { viewerId: resolvedUser._id }
+        });
+        setPosts(postsResponse.data);
+      } catch (err) {
         console.error('Failed to fetch posts:', err);
         setError('Could not load posts. Is the backend running?');
+      } finally {
         setLoading(false);
-      });
-  }, []);
+      }
+    }
+
+    loadFeed();
+  }, [initialCurrentUser]);
 
   const handleLike = async (postId, liked) => {
     try {
-      const res = await api.put(`/posts/${postId}/like`, { liked });
-      setPosts(prev => prev.map(p => p._id === postId ? { ...p, likes: res.data.likes } : p));
+      // Send liker
+      const res = await api.put(`/posts/${postId}/like`, {
+        liked,
+        userId: currentUser?._id
+      });
+      setPosts(prev => prev.map(p => p._id === postId ? {
+        ...p,
+        likes: res.data.likes,
+        viewerHasLiked: res.data.viewerHasLiked
+      } : p));
     } catch (err) {
       console.error('Like failed:', err);
     }
@@ -88,6 +107,7 @@ export default function Feed() {
         <PostCard
           key={post._id}
           post={post}
+          currentUser={currentUser}
           onRepost={handleOpenRepost}
           onLike={handleLike}
         />

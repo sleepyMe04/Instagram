@@ -29,5 +29,6 @@ mongoose.connection.on('reconnected', () => console.log('🔄 MongoDB reconnecte
 
 app.use('/api/posts', require('./routes/posts'));
 app.use('/api/comments', require('./routes/comments'));   // ← ADD THIS
+app.use('/api/users', require('./routes/users'));
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

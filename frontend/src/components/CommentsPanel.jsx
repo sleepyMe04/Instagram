@@ -2,12 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import api from '../api/axios';
 
 const bannedWords = ['hate', 'kill', 'slur1', 'slur2'];
-const MY_AVATAR = 'https://i.pravatar.cc/32?img=1';
 
 // ── Single reply row ──────────────────────────────────────────────────────────
-function ReplyRow({ reply }) {
+function ReplyRow({ reply, myAvatar }) {
   const avatar = reply.author === 'you'
-    ? MY_AVATAR
+    ? myAvatar
     : `https://i.pravatar.cc/28?u=${reply.author}`;
   return (
     <div className="cp-reply-row">
@@ -20,13 +19,13 @@ function ReplyRow({ reply }) {
 }
 
 // ── Single top-level comment + its threaded replies ───────────────────────────
-function CommentThread({ comment, postId, replies, onAddReply, onReplyTo }) {
+function CommentThread({ comment, postId, replies, onAddReply, onReplyTo, myAvatar }) {
   const [showReplies, setShowReplies] = useState(false);
   const [loading, setLoading]         = useState(false);
   const [fetched, setFetched]         = useState(false);
 
   const avatar = comment.author === 'you'
-    ? MY_AVATAR
+    ? myAvatar
     : `https://i.pravatar.cc/36?u=${comment.author}`;
 
   const handleToggleReplies = async () => {
@@ -84,7 +83,7 @@ function CommentThread({ comment, postId, replies, onAddReply, onReplyTo }) {
       {/* Threaded reply list */}
       {showReplies && replies.length > 0 && (
         <div className="cp-replies-indent">
-          {replies.map(r => <ReplyRow key={r._id} reply={r} />)}
+          {replies.map(r => <ReplyRow key={r._id} reply={r} myAvatar={myAvatar} />)}
         </div>
       )}
     </div>
@@ -94,6 +93,7 @@ function CommentThread({ comment, postId, replies, onAddReply, onReplyTo }) {
 // ── CommentsPanel ─────────────────────────────────────────────────────────────
 export default function CommentsPanel({
   post,
+  currentUser,
   comments,        // lifted state from PostCard
   repliesMap,      // lifted state: { [commentId]: Reply[] }
   onAddComment,    // (comment) => void
@@ -107,6 +107,8 @@ export default function CommentsPanel({
   const [warning, setWarning]       = useState('');
   const inputRef  = useRef(null);
   const listRef   = useRef(null);
+  // Viewer avatar
+  const myAvatar = currentUser?.avatarUrl || 'https://i.pravatar.cc/32?u=you.demo';
 
   // Fetch comments from server on first open
   useEffect(() => {
@@ -216,6 +218,7 @@ export default function CommentsPanel({
                 replies={repliesMap[c._id] || []}
                 onAddReply={onAddReply}
                 onReplyTo={handleReplyTo}
+                myAvatar={myAvatar}
               />
             ))
           )}
@@ -234,7 +237,7 @@ export default function CommentsPanel({
 
         {/* ── Input bar ── */}
         <div className="cp-input-bar">
-          <img src={MY_AVATAR} alt="you" className="cp-av" />
+          <img src={myAvatar} alt="you" className="cp-av" />
           <input
             ref={inputRef}
             className="cp-input"

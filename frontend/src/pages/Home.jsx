@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import api from '../api/axios';
 import Feed from '../components/Feed';
 
 const STORIES = [
@@ -42,11 +43,19 @@ const MoonIcon = () => (
 
 export default function Home() {
   const [dark, setDark] = useState(() => localStorage.getItem('ig-dark') === '1');
+  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
     localStorage.setItem('ig-dark', dark ? '1' : '0');
   }, [dark]);
+
+  useEffect(() => {
+    // Load viewer
+    api.get('/users/me')
+      .then(res => setCurrentUser(res.data))
+      .catch(err => console.error('Failed to fetch current user:', err));
+  }, []);
 
   return (
     <>
@@ -71,7 +80,10 @@ export default function Home() {
                 <div className={`ig-story-ring${i > 3 ? ' seen' : ''}`}>
                   <div className="ig-story-inner">
                     <img
-                      src={s.you ? 'https://i.pravatar.cc/56?img=1' : `https://i.pravatar.cc/56?u=${s.user}`}
+                      // Story avatar
+                      src={s.you
+                        ? (currentUser?.avatarUrl || 'https://i.pravatar.cc/56?u=you.demo')
+                        : `https://i.pravatar.cc/56?u=${s.user}`}
                       alt={s.user}
                     />
                   </div>
@@ -80,7 +92,7 @@ export default function Home() {
               </div>
             ))}
           </div>
-          <Feed/>
+          <Feed currentUser={currentUser}/>
         </div>
       </div>
     </>
