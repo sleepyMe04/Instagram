@@ -82,7 +82,7 @@ export default function Home() {
                     <img
                       // Story avatar
                       src={s.you
-                        ? (currentUser?.avatarUrl || 'https://i.pravatar.cc/56?u=you.demo')
+                        ? (currentUser?.avatarUrl || 'https://i.pravatar.cc/56?u=_mld_')
                         : `https://i.pravatar.cc/56?u=${s.user}`}
                       alt={s.user}
                     />

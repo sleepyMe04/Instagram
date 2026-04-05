@@ -51,7 +51,7 @@ const timeAgo = (dateStr) => {
 export default function PostCard({ post, currentUser, onRepost, onLike }) {
   // Viewer avatar
   const images = post.images?.length ? post.images : [post.imageUrl];
-  const myAvatar = currentUser?.avatarUrl || 'https://i.pravatar.cc/32?u=you.demo';
+  const myAvatar = currentUser?.avatarUrl || 'https://i.pravatar.cc/32?u=_mld_';
   const [activeImage, setActiveImage] = useState(0);
   const [liked,       setLiked]      = useState(Boolean(post.viewerHasLiked));
   const [likeCount,   setLikeCount]  = useState(post.likes || 0);

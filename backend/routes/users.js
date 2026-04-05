@@ -3,11 +3,11 @@ const User = require('../models/User');
 
 // Demo identity
 const DEMO_USER = {
-  username: 'you.demo',
-  email: 'you.demo@example.com',
-  fullName: 'You',
+  username: '_mld_',
+  email: 'mld.demo@example.com',
+  fullName: '_mld_',
   bio: 'Local demo account',
-  avatarUrl: 'https://i.pravatar.cc/300?u=you.demo',
+  avatarUrl: 'https://i.pravatar.cc/300?u=_mld_',
   location: 'Dhaka, Bangladesh',
   website: '',
   followersCount: 128,
@@ -18,9 +18,20 @@ const DEMO_USER = {
 };
 
 async function ensureDemoUser() {
-  let user = await User.findOne({ username: DEMO_USER.username });
+  let user = await User.findOne({
+    $or: [
+      { username: DEMO_USER.username },
+      { username: 'you.demo' },
+      { email: DEMO_USER.email },
+      { email: 'you.demo@example.com' }
+    ]
+  });
+
   if (!user) {
     user = await User.create(DEMO_USER);
+  } else {
+    Object.assign(user, DEMO_USER);
+    await user.save();
   }
   return user;
 }

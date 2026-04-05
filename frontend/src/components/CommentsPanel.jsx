@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../api/axios';
-const MY_AVATAR = 'https://i.pravatar.cc/32?img=1';
 
 // ── Single reply row ──────────────────────────────────────────────────────────
-function ReplyRow({ reply, myAvatar }) {
-  const avatar = reply.author === 'you'
+function ReplyRow({ reply, myAvatar, currentUsername }) {
+  const avatar = reply.author === currentUsername || reply.author === 'you'
     ? myAvatar
     : `https://i.pravatar.cc/28?u=${reply.author}`;
   return (
@@ -18,12 +17,12 @@ function ReplyRow({ reply, myAvatar }) {
 }
 
 // ── Single top-level comment + its threaded replies ───────────────────────────
-function CommentThread({ comment, postId, replies, onAddReply, onReplyTo, myAvatar }) {
+function CommentThread({ comment, postId, replies, onAddReply, onReplyTo, myAvatar, currentUsername }) {
   const [showReplies, setShowReplies] = useState(false);
   const [loading, setLoading]         = useState(false);
   const [fetched, setFetched]         = useState(false);
 
-  const avatar = comment.author === 'you'
+  const avatar = comment.author === currentUsername || comment.author === 'you'
     ? myAvatar
     : `https://i.pravatar.cc/36?u=${comment.author}`;
 
@@ -82,7 +81,14 @@ function CommentThread({ comment, postId, replies, onAddReply, onReplyTo, myAvat
       {/* Threaded reply list */}
       {showReplies && replies.length > 0 && (
         <div className="cp-replies-indent">
-          {replies.map(r => <ReplyRow key={r._id} reply={r} myAvatar={myAvatar} />)}
+          {replies.map(r => (
+            <ReplyRow
+              key={r._id}
+              reply={r}
+              myAvatar={myAvatar}
+              currentUsername={currentUsername}
+            />
+          ))}
         </div>
       )}
     </div>
@@ -107,7 +113,8 @@ export default function CommentsPanel({
   const inputRef  = useRef(null);
   const listRef   = useRef(null);
   // Viewer avatar
-  const myAvatar = currentUser?.avatarUrl || 'https://i.pravatar.cc/32?u=you.demo';
+  const currentUsername = currentUser?.username || '_mld_';
+  const myAvatar = currentUser?.avatarUrl || 'https://i.pravatar.cc/32?u=_mld_';
 
   // Fetch comments from server on first open
   useEffect(() => {
@@ -132,7 +139,7 @@ export default function CommentsPanel({
       try {
         const replyTarget = replyingTo;
         const res = await api.post(`/comments/${post._id}`, {
-          author: 'you', text, parentCommentId: replyTarget._id,
+          author: currentUsername, text, parentCommentId: replyTarget._id,
         });
         onAddReply(replyTarget._id, [res.data]);
         setReplyingTo(null);
@@ -142,7 +149,7 @@ export default function CommentsPanel({
       }
     } else {
       try {
-        const res = await api.post(`/comments/${post._id}`, { author: 'you', text });
+        const res = await api.post(`/comments/${post._id}`, { author: currentUsername, text });
         onAddComment(res.data);
         setInputText('');
         setTimeout(() => listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' }), 80);
@@ -202,6 +209,7 @@ export default function CommentsPanel({
                 onAddReply={onAddReply}
                 onReplyTo={handleReplyTo}
                 myAvatar={myAvatar}
+                currentUsername={currentUsername}
               />
             ))
           )}
