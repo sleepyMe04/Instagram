@@ -1,16 +1,85 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../api/axios';
 
+const HeartIcon = ({ filled }) => filled ? (
+  <svg fill="#ed4956" height="18" viewBox="0 0 48 48" width="18">
+    <path d="M34.6 3.1c-4.5 0-7.9 1.8-10.6 5.6-2.7-3.7-6.1-5.5-10.6-5.5C6 3.1 0 9.6 0 17.6c0 7.3 5.4 12 10.6 16.5.6.5 1.3 1.1 1.9 1.7l2.3 2c4.4 3.9 6.6 5.9 7.6 6.5.5.3 1.1.5 1.6.5s1.1-.2 1.6-.5c1-.6 2.8-2.2 7.8-6.8l2-1.8c.7-.6 1.3-1.2 2-1.7C42.7 29.6 48 25 48 17.6c0-8-6-14.5-13.4-14.5z"/>
+  </svg>
+) : (
+  <svg fill="none" height="18" viewBox="0 0 24 24" width="18" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
+    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+  </svg>
+);
+
+function ReactionButton({ liked, likeCount, onToggle, label }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={label}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '4px',
+        background: 'none',
+        border: 'none',
+        cursor: 'pointer',
+        color: liked ? '#ed4956' : 'var(--text-muted)',
+        padding: '2px 0 0',
+        fontFamily: 'inherit',
+        flexShrink: 0,
+      }}
+    >
+      <HeartIcon filled={liked} />
+      {likeCount > 0 && (
+        <span
+          style={{
+            fontSize: '12px',
+            fontWeight: 700,
+            color: 'inherit',
+            minWidth: '10px',
+            textAlign: 'left',
+          }}
+        >
+          {likeCount}
+        </span>
+      )}
+    </button>
+  );
+}
+
 // ── Single reply row ──────────────────────────────────────────────────────────
 function ReplyRow({ reply, myAvatar, currentUsername }) {
+  const [liked, setLiked] = useState(Boolean(reply.viewerHasLiked));
+  const [likeCount, setLikeCount] = useState(reply.likes || 0);
   const avatar = reply.author === currentUsername || reply.author === 'you'
     ? myAvatar
     : `https://i.pravatar.cc/28?u=${reply.author}`;
+
+  useEffect(() => {
+    setLiked(Boolean(reply.viewerHasLiked));
+    setLikeCount(reply.likes || 0);
+  }, [reply._id, reply.likes, reply.viewerHasLiked]);
+
+  const handleLikeToggle = () => {
+    const next = !liked;
+    setLiked(next);
+    setLikeCount(count => next ? count + 1 : Math.max(0, count - 1));
+  };
+
   return (
     <div className="cp-reply-row">
       <img src={avatar} alt={reply.author} className="cp-av cp-av-sm" />
-      <div className="cp-reply-body">
+      <div className="cp-reply-body" style={{ flex: 1, minWidth: 0 }}>
         <span className="cp-uname">{reply.author}</span>{' '}{reply.text}
+      </div>
+      <div style={{ marginLeft: 'auto', paddingLeft: '12px' }}>
+        <ReactionButton
+          liked={liked}
+          likeCount={likeCount}
+          onToggle={handleLikeToggle}
+          label={liked ? 'Unlike reply' : 'Like reply'}
+        />
       </div>
     </div>
   );
@@ -21,10 +90,17 @@ function CommentThread({ comment, postId, replies, onAddReply, onReplyTo, myAvat
   const [showReplies, setShowReplies] = useState(false);
   const [loading, setLoading]         = useState(false);
   const [fetched, setFetched]         = useState(false);
+  const [liked, setLiked]             = useState(Boolean(comment.viewerHasLiked));
+  const [likeCount, setLikeCount]     = useState(comment.likes || 0);
 
   const avatar = comment.author === currentUsername || comment.author === 'you'
     ? myAvatar
     : `https://i.pravatar.cc/36?u=${comment.author}`;
+
+  useEffect(() => {
+    setLiked(Boolean(comment.viewerHasLiked));
+    setLikeCount(comment.likes || 0);
+  }, [comment._id, comment.likes, comment.viewerHasLiked]);
 
   const handleToggleReplies = async () => {
     if (fetched) { setShowReplies(s => !s); return; }
@@ -47,6 +123,11 @@ function CommentThread({ comment, postId, replies, onAddReply, onReplyTo, myAvat
   };
 
   const totalReplies = replies.length;
+  const handleLikeToggle = () => {
+    const next = !liked;
+    setLiked(next);
+    setLikeCount(count => next ? count + 1 : Math.max(0, count - 1));
+  };
 
   return (
     <div className="cp-thread">
@@ -64,6 +145,12 @@ function CommentThread({ comment, postId, replies, onAddReply, onReplyTo, myAvat
             </button>
           </div>
         </div>
+        <ReactionButton
+          liked={liked}
+          likeCount={likeCount}
+          onToggle={handleLikeToggle}
+          label={liked ? 'Unlike comment' : 'Like comment'}
+        />
       </div>
 
       {/* View / hide replies toggle */}
